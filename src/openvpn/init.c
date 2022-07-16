@@ -1841,6 +1841,106 @@ do_open_tun(struct context *c, int *error_flags)
         /* initialize (but do not open) tun/tap object */
         do_init_tun(c);
 
+#ifdef _WIN32
+        /* store (hide) interactive service handle in tuntap_options */
+        c->c1.tuntap->options.msg_channel = c->options.msg_channel;
+        msg(D_ROUTE, "interactive service msg_channel=%" PRIu64, (unsigned long long) c->options.msg_channel);
+#endif
+
+        /* allocate route list structure */
+        do_alloc_route_list(c);
+
+        /* parse and resolve the route option list */
+        ASSERT(c->c2.link_socket);
+        if (c->options.routes && c->c1.route_list)
+        {
+            do_init_route_list(&c->options, c->c1.route_list,
+                               &c->c2.link_socket->info, c->c2.es, &c->net_ctx);
+        }
+        if (c->options.routes_ipv6 && c->c1.route_ipv6_list)
+        {
+            do_init_route_ipv6_list(&c->options, c->c1.route_ipv6_list,
+                                    &c->c2.link_socket->info, c->c2.es,
+                                    &c->net_ctx);
+        }
+
+        /* do ifconfig */
+        c->c1.tuntap->mtu = c->c2.frame.tun_mtu;
+        if (!c->options.ifconfig_noexec
+            && ifconfig_order() == IFCONFIG_BEFORE_TUN_OPEN)
+        {
+            /* guess actual tun/tap unit number that will be returned
+             * by open_tun */
+            const char *guess = guess_tuntap_dev(c->options.dev,
+                                                 c->options.dev_type,
+                                                 c->options.dev_node,
+                                                 &gc);
+            do_ifconfig(c->c1.tuntap, guess, c->c2.es, &c->net_ctx);
+        }
+
+        /* possibly add routes */
+        if (route_order() == ROUTE_BEFORE_TUN)
+        {
+            /* Ignore route_delay, would cause ROUTE_BEFORE_TUN to be ignored */
+            do_route(&c->options, c->c1.route_list, c->c1.route_ipv6_list,
+                     c->c1.tuntap, c->plugins, c->c2.es, &c->net_ctx);
+        }
+#ifdef TARGET_ANDROID
+        /* Store the old fd inside the fd so open_tun can use it */
+        c->c1.tuntap->fd = oldtunfd;
+#endif
+        /* open the tun device */
+        open_tun(c->options.dev, c->options.dev_type, c->options.dev_node,
+                 c->c1.tuntap);
+
+        /* set the hardware address */
+        if (c->options.lladdr)
+        {
+            set_lladdr(&c->net_ctx, c->c1.tuntap->actual_name, c->options.lladdr,
+                       c->c2.es);
+        }
+
+        /* do ifconfig */
+        if (!c->options.ifconfig_noexec
+            && ifconfig_order() == IFCONFIG_AFTER_TUN_OPEN)
+        {
+            do_ifconfig(c->c1.tuntap, c->c1.tuntap->actual_name,
+                        c->c2.es, &c->net_ctx);
+        }
+
+        /* run the up script */
+        run_up_down(c->options.up_script,
+                    c->plugins,
+                    OPENVPN_PLUGIN_UP,
+                    c->c1.tuntap->actual_name,
+#ifdef _WIN32
+                    c->c1.tuntap->adapter_index,
+#endif
+                    dev_type_string(c->options.dev, c->options.dev_type),
+                    c->c2.frame.tun_mtu,
+                    print_in_addr_t(c->c1.tuntap->local, IA_EMPTY_IF_UNDEF, &gc),
+                    print_in_addr_t(c->c1.tuntap->remote_netmask, IA_EMPTY_IF_UNDEF, &gc),
+                    "init",
+                    NULL,
+                    "up",
+                    c->c2.es);
+
+#if defined(_WIN32)
+        if (c->options.block_outside_dns)
+        {
+            dmsg(D_LOW, "Blocking outside DNS");
+            if (!win_wfp_block_dns(c->c1.tuntap->adapter_index, c->options.msg_channel))
+        {
+            oldtunfd = c->c1.tuntap->fd;
+            free(c->c1.tuntap);
+            c->c1.tuntap = NULL;
+            c->c1.tuntap_owned = false;
+        }
+#endif
+
+        /* initialize (but do not open) tun/tap object */
+        do_init_tun(c);
+
         /* inherit the dco context from the tuntap object */
         if (c->c2.tls_multi)
         {
