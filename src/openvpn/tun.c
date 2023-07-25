@@ -1049,17 +1049,17 @@ do_ifconfig_ipv6(struct tuntap *tt, const char *ifname, int tun_mtu,
 #endif
 
 #if defined(TARGET_LINUX)
-    if (net_iface_mtu_set(ctx, ifname, tun_mtu) < 0)
+    if (! tt->is_pipe && net_iface_mtu_set(ctx, ifname, tun_mtu) < 0)
     {
         msg(M_FATAL, "Linux can't set mtu (%d) on %s", tun_mtu, ifname);
     }
 
-    if (net_iface_up(ctx, ifname, true) < 0)
+    if (! tt->is_pipe && net_iface_up(ctx, ifname, true) < 0)
     {
         msg(M_FATAL, "Linux can't bring %s up", ifname);
     }
 
-    if (net_addr_v6_add(ctx, ifname, &tt->local_ipv6,
+    if (! tt->is_pipe && net_addr_v6_add(ctx, ifname, &tt->local_ipv6,
                         tt->netbits_ipv6) < 0)
     {
         msg(M_FATAL, "Linux can't add IPv6 to interface %s", ifname);
@@ -1267,19 +1267,20 @@ do_ifconfig_ipv4(struct tuntap *tt, const char *ifname, int tun_mtu,
 #endif
 
 #if defined(TARGET_LINUX)
-    if (net_iface_mtu_set(ctx, ifname, tun_mtu) < 0)
+    if (! tt->is_pipe && net_iface_mtu_set(ctx, ifname, tun_mtu) < 0)
     {
         msg(M_FATAL, "Linux can't set mtu (%d) on %s", tun_mtu, ifname);
     }
 
-    if (net_iface_up(ctx, ifname, true) < 0)
+    if (! tt->is_pipe && net_iface_up(ctx, ifname, true) < 0)
     {
         msg(M_FATAL, "Linux can't bring %s up", ifname);
     }
 
     if (tun)
     {
-        if (net_addr_ptp_v4_add(ctx, ifname, &tt->local,
+        if (! tt->is_pipe &&
+            net_addr_ptp_v4_add(ctx, ifname, &tt->local,
                                 &tt->remote_netmask) < 0)
         {
             msg(M_FATAL, "Linux can't add IP to interface %s", ifname);
@@ -1287,7 +1288,8 @@ do_ifconfig_ipv4(struct tuntap *tt, const char *ifname, int tun_mtu,
     }
     else
     {
-        if (net_addr_v4_add(ctx, ifname, &tt->local,
+        if (! tt->is_pipe &&
+            net_addr_v4_add(ctx, ifname, &tt->local,
                             netmask_to_netbits2(tt->remote_netmask)) < 0)
         {
             msg(M_FATAL, "Linux can't add IP to interface %s", ifname);
@@ -1641,7 +1643,7 @@ undo_ifconfig_ipv4(struct tuntap *tt, openvpn_net_ctx_t *ctx)
 
     if (is_tun_p2p(tt))
     {
-        if (net_addr_ptp_v4_del(ctx, tt->actual_name, &tt->local,
+        if (! tt->is_pipe && net_addr_ptp_v4_del(ctx, tt->actual_name, &tt->local,
                                 &tt->remote_netmask) < 0)
         {
             msg(M_WARN, "Linux can't del IP from iface %s",
@@ -1650,7 +1652,7 @@ undo_ifconfig_ipv4(struct tuntap *tt, openvpn_net_ctx_t *ctx)
     }
     else
     {
-        if (net_addr_v4_del(ctx, tt->actual_name, &tt->local, netbits) < 0)
+        if (! tt->is_pipe && net_addr_v4_del(ctx, tt->actual_name, &tt->local, netbits) < 0)
         {
             msg(M_WARN, "Linux can't del IP from iface %s",
                 tt->actual_name);
@@ -1676,7 +1678,8 @@ static void
 undo_ifconfig_ipv6(struct tuntap *tt, openvpn_net_ctx_t *ctx)
 {
 #if defined(TARGET_LINUX)
-    if (net_addr_v6_del(ctx, tt->actual_name, &tt->local_ipv6,
+    if (! tt->is_pipe &&
+        net_addr_v6_del(ctx, tt->actual_name, &tt->local_ipv6,
                         tt->netbits_ipv6) < 0)
     {
         msg(M_WARN, "Linux can't del IPv6 from iface %s", tt->actual_name);

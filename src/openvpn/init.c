@@ -1895,7 +1895,7 @@ do_open_tun(struct context *c, int *error_flags)
 #endif
         /* open the tun device */
         open_tun(c->options.dev, c->options.dev_type, c->options.dev_node,
-                 c->c1.tuntap);
+                 c->c1.tuntap, &c->net_ctx);
 
         /* set the hardware address */
         if (c->options.lladdr
@@ -1997,7 +1997,7 @@ do_open_tun(struct context *c, int *error_flags)
 #endif
         /* open the tun device */
         open_tun(c->options.dev, c->options.dev_type, c->options.dev_node,
-                 c->c1.tuntap);
+                 c->c1.tuntap, &c->net_ctx);
 
         /* set the hardware address */
         if (c->options.lladdr)
@@ -2087,7 +2087,7 @@ do_open_tun(struct context *c, int *error_flags)
                                                  c->options.dev_type,
                                                  c->options.dev_node,
                                                  &gc);
-            do_ifconfig(c->c1.tuntap, guess, c->c2.frame.tun_mtu, c->c2.es,
+            do_ifconfig(c->c1.tuntap, guess, c->c2.es,
                         &c->net_ctx);
         }
 
@@ -2124,7 +2124,7 @@ do_open_tun(struct context *c, int *error_flags)
             && ifconfig_order() == IFCONFIG_AFTER_TUN_OPEN)
         {
             do_ifconfig(c->c1.tuntap, c->c1.tuntap->actual_name,
-                        c->c2.frame.tun_mtu, c->c2.es, &c->net_ctx);
+                        c->c2.es, &c->net_ctx);
         }
 
         /* run the up script */
