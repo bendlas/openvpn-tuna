@@ -53,7 +53,8 @@ endif
 SUBDIRS = build distro include src sample doc tests
 
 dist_doc_DATA = \
-	README \
+	README.md \
+	README.openvpn \
 	README.mbedtls \
 	Changes.rst \
 	COPYRIGHT.GPL \
