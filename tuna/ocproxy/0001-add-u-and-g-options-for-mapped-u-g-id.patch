@@ -1,0 +1,59 @@
+From 1f7a14821552ffc0b8a9993286750456ce04b496 Mon Sep 17 00:00:00 2001
+From: Herwig Hochleitner <herwig@bendlas.net>
+Date: Mon, 23 Aug 2021 19:26:31 +0200
+Subject: [PATCH] add -u and -g options for  mapped (u/g)id
+
+---
+ src/vpnns.c | 14 ++++++++++++--
+ 1 file changed, 12 insertions(+), 2 deletions(-)
+
+diff --git a/src/vpnns.c b/src/vpnns.c
+index 9d6545e..fcf4058 100644
+--- a/src/vpnns.c
++++ b/src/vpnns.c
+@@ -477,6 +477,8 @@ static int connect_to_watcher(const char *statedir)
+ 	return fd;
+ }
+ 
++static uid_t muid = 0, mgid = 0;
++
+ static int create_ns(const char *statedir, const char *name)
+ {
+ 	char str[64];
+@@ -489,9 +491,9 @@ static int create_ns(const char *statedir, const char *name)
+ 
+ 	if (access("/proc/self/setgroups", O_RDONLY) == 0)
+ 		write_file("/proc/self/setgroups", "deny");
+-	snprintf(str, sizeof(str), "0 %d 1", uid);
++	snprintf(str, sizeof(str), "%d %d 1", muid, uid);
+ 	write_file("/proc/self/uid_map", str);
+-	snprintf(str, sizeof(str), "0 %d 1", gid);
++	snprintf(str, sizeof(str), "%d %d 1", mgid, gid);
+ 	write_file("/proc/self/gid_map", str);
+ 
+ 	if (sethostname(name, strlen(name)) < 0)
+@@ -803,6 +805,8 @@ static struct option longopts[] = {
+ 	{ "script",		1,	NULL,	's' },
+ 	{ "help",		0,	NULL,	'h' },
+ 	{ "version",		0,	NULL,	'v' },
++	{ "uid",                1,      NULL,   'u' },
++	{ "gid",                1,      NULL,   'g' },
+ 	{ NULL }
+ };
+ 
+@@ -829,6 +833,12 @@ int main(int argc, char **argv)
+ 		case 's':
+ 			script = optarg;
+ 			break;
++		case 'u':
++			muid = (uid_t) strtol(optarg, (char**) NULL, 10);
++			break;
++		case 'g':
++			mgid = (uid_t) strtol(optarg, (char**) NULL, 10);
++			break;
+ 		case 'h':
+ 		case '?':
+ 			show_help();
+-- 
+2.33.0
+

@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+
+set -eu
+
+echo >&2 =============== OpenVPN CONNECT FD: $VPNFD
+if [ "$VPNFD" != 7 ]
+then echo 2>&1 'Not starting proxy for VPNFD != 7'
+     exit 0
+fi
+
+if [ -f $TUNA_TMP/tuna-connect.pid ]
+then echo >&2 "PID file exists: $TUNA_TMP/tuna-connect.pid"
+     exit 1
+fi
+
+echo $$ > $TUNA_TMP/tuna-connect.pid
+trap "@coreutils@/bin/rm -f -- $TUNA_TMP/tuna-connect.pid" EXIT
+
+## parse dns vars
+for optionname in ${!foreign_option_*} ; do
+    option="${!optionname}"
+    echo $option
+    part1=$(echo "$option" | @coreutils@/bin/cut -d " " -f 1)
+    if [ "$part1" == "dhcp-option" ] ; then
+        part2=$(echo "$option" | @coreutils@/bin/cut -d " " -f 2)
+        part3=$(echo "$option" | @coreutils@/bin/cut -d " " -f 3)
+        if [ "$part2" == "DNS" ] ; then
+            echo "$part3" >> $TUNA_TMP/nameservers
+        fi
+        if [[ "$part2" == "DOMAIN" || "$part2" == "DOMAIN-SEARCH" ]] ; then
+            echo "$part3" >> $TUNA_TMP/domain-search
+        fi
+    fi
+done
+export INTERNAL_IP4_DNS=$(@coreutils@/bin/paste -sd, $TUNA_TMP/nameservers)
+
+echo >&2 =========== OpenVPN PROXY START: $VPNFD: $1
+eval "$1"     

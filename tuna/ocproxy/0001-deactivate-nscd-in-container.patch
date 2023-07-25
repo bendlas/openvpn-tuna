@@ -1,0 +1,29 @@
+From e482ef958ec385741c9499d5ee6944bd477a8293 Mon Sep 17 00:00:00 2001
+From: Herwig Hochleitner <herwig@bendlas.net>
+Date: Wed, 25 Aug 2021 18:52:49 +0200
+Subject: [PATCH] deactivate nscd in container
+
+---
+ src/vpnns.c | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+diff --git a/src/vpnns.c b/src/vpnns.c
+index 9d6545e..2f4c2a3 100644
+--- a/src/vpnns.c
++++ b/src/vpnns.c
+@@ -498,6 +498,12 @@ static int create_ns(const char *statedir, const char *name)
+ 		pdie("can't set hostname");
+ 	setup_ipv4("lo", "127.0.0.1", "255.0.0.0", false, 0);
+ 
++        // disable nscd
++
++        mount("empty", "/var/run/nscd", "tmpfs", 0, "");
++
++        // overlay /etc
++
+ 	mkdir(statedir, 0755);
+ 	char *local_etc = populate_statedir(statedir, "etc", true);
+ 	char *workdir = populate_statedir(statedir, "workdir", true);
+-- 
+2.33.0
+

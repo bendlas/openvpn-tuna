@@ -1,0 +1,111 @@
+#!/usr/bin/env bash
+
+set -eu
+
+vpnConf="$1"
+shift
+
+# replace with your hostname
+# vpnHost="cvpn-endpoint-<id>.prod.clientvpn.us-east-1.amazonaws.com"
+vpnHost=
+vpnPort=1194
+vpnProto=udp
+
+while [ -z "$vpnHost" -o -z "$vpnProto" ]
+      # remote cvpn-endpoint-0c110561ad3bbabba.prod.clientvpn.us-east-1.amazonaws.com 443
+do IFS=" " read type a1 a2
+   case "$type" in
+       remote)
+           vpnHost=$a1
+           vpnPort=$a2
+           ;;
+       proto)
+           vpnProto=$a1
+           ;;
+   esac
+done < "$vpnConf"
+
+echo "
+Parsed configuration:
+    Host: $vpnHost
+    Port: $vpnPort
+    Protocol: $vpnProto
+"
+
+wait_file() {
+  local file="$1"; shift
+  local wait_seconds="${1:-10}"; shift # 10 seconds as default timeout
+  until test $((wait_seconds--)) -eq 0 -o -f "$file" ; do @coreutils@/bin/sleep 1; done
+  ((++wait_seconds))
+}
+
+# create random hostname prefix for the vpn gw
+RAND=$(@openssl@/bin/openssl rand -hex 12)
+
+# resolv manually hostname to IP, as we have to keep persistent ip address
+SRV=$(@dnsutils@/bin/dig a +short "${RAND}.${vpnHost}"|head -n1)
+
+# cleanup
+@coreutils@/bin/rm -f saml-response.txt
+
+echo "Getting SAML redirect URL from the AUTH_FAILED response (host: ${SRV}:${vpnPort})"
+OVPN_OUT=$(@openvpnTuna@/bin/openvpn --config "${vpnConf}" --verb 3 \
+     --proto "$vpnProto" --remote "${SRV}" "${vpnPort}" \
+     --auth-user-pass <( printf "%s\n%s\n" "N/A" "ACS::35001" ) \
+    2>&1 | tee /dev/stderr | @grep@/bin/grep AUTH_FAILED,CRV1)
+
+URL=$(echo "$OVPN_OUT" | @grep@/bin/grep -Eo 'https://.+')
+
+echo "Opening browser and wait for the response file\n\n${URL}"
+
+${TUNA_OPEN_COMMAND:-@xdgUtils@/bin/xdg-open} "$URL"
+
+wait_file "saml-response.txt" 30 || {
+  echo "SAML Authentication time out"
+  exit 1
+}
+
+# get SID from the reply
+VPN_SID=$(echo "$OVPN_OUT" | @awk@/bin/awk -F : '{print $7}')
+
+# echo "sleep 2 for AWS to catch up"
+# @coreutils@/bin/sleep 2
+
+echo "Running OpenVPN __without__ sudo, into. Just complete 2factor"
+echo "script tunnel '$1'; sid $VPN_SID"
+
+cleanup() {
+    set +e
+    if [ -f $TUNA_TMP/tuna-connect.pid ]; then
+        echo "Killing lingering AWS VPN proxy pipe"
+        kill "$(cat $TUNA_TMP/tuna-connect.pid)"
+    fi
+    @coreutils@/bin/rm -rf -- "$TUNA_TMP"
+}
+
+TUNA_TMP="$(@coreutils@/bin/mktemp -d)"
+trap cleanup EXIT
+touch $TUNA_TMP/running
+trap "@coreutils@/bin/rm $TUNA_TMP/running" INT
+
+# Finally OpenVPN with a SAML response we got
+# Delete saml-response.txt after connect
+dur="1.5"
+while true
+do
+    @openvpnTuna@/bin/openvpn \
+       --config $vpnConf \
+       --verb 3 --auth-nocache --inactive 3600 \
+       --proto $vpnProto --remote $SRV $vpnPort \
+       --script-security 2 \
+       --route-up '@coreutils@/bin/rm saml-response.txt' \
+       --auth-user-pass <( printf "%s\n%s\n" "N/A" "CRV1::${VPN_SID}::$(cat saml-response.txt)" ) \
+       --pull-filter ignore block-outside-dns \
+       --dev "| TUNA_TMP=$TUNA_TMP @out@/bin/tuna-connect-liner $(printf '%q' "$1")" || echo >&2 "OpenVPN client died ..."
+    [ -f $TUNA_TMP/running ] || break
+    echo >&2 "=============== Exp backoff, sleeping: ${dur}s"
+    @coreutils@/bin/sleep "$dur"
+    dur=$(echo "$dur * 1.2" | @bc@/bin/bc)
+done
+
+echo >&2 "===== Shutting down normally"
