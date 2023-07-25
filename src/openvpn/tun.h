@@ -266,7 +266,7 @@ tuntap_ring_empty(struct tuntap *tt)
  * Function prototypes
  */
 
-void open_tun(const char *dev, const char *dev_type, const char *dev_node,
+void open_tun(struct env_set *es, const char *dev, const char *dev_type, const char *dev_node,
               struct tuntap *tt, openvpn_net_ctx_t *ctx);
 
 void close_tun(struct tuntap *tt, openvpn_net_ctx_t *ctx);

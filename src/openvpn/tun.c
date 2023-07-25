@@ -1762,10 +1762,10 @@ set_vpnc_vars (struct env_set *es, struct tuntap *tt)
 }
 
 static void
-open_pipe (const char *dev, struct tuntap *tt)
+open_pipe (struct env_set *es, const char *dev, struct tuntap *tt)
 {
     struct argv argv;
-    struct env_set *es;
+    struct env_set *pes;
     int fds[2], pid;
 
     if (socketpair(AF_UNIX, SOCK_DGRAM, 0, fds) == -1)
@@ -1779,17 +1779,18 @@ open_pipe (const char *dev, struct tuntap *tt)
     set_nonblock(tt->fd);
     set_cloexec(tt->fd);
 
-    es = env_set_create(NULL);
-    setenv_int(es, "VPNFD", fds[1]);
-    set_vpnc_vars(es, tt);
+    pes = env_set_create(NULL);
+    env_set_inherit(pes, es);
+    setenv_int(pes, "VPNFD", fds[1]);
+    set_vpnc_vars(pes, tt);
 
     argv = argv_new();
     /* dev looks like: "|/path/to/program <args...>" */
     argv_printf(&argv, "/bin/sh -c %s", &dev[1]);
-    pid = openvpn_execve_check(&argv, es, M_ERR | S_SCRIPT | S_NOWAIT | S_SETPGRP,
+    pid = openvpn_execve_check(&argv, pes, M_ERR | S_SCRIPT | S_NOWAIT | S_SETPGRP,
                                "ERROR: Unable to execute TUN script");
     argv_free(&argv);
-    env_set_destroy(es);
+    env_set_destroy(pes);
     close(fds[1]);
 
     /*
@@ -1913,7 +1914,7 @@ tun_dco_enabled(struct tuntap *tt)
 
 #if !(defined(_WIN32) || defined(TARGET_LINUX))
 static void
-open_tun_generic(const char *dev, const char *dev_type, const char *dev_node,
+open_tun_generic(env_set *es, const char *dev, const char *dev_type, const char *dev_node,
                  struct tuntap *tt)
 {
     char tunname[256];
@@ -1922,7 +1923,7 @@ open_tun_generic(const char *dev, const char *dev_type, const char *dev_node,
 
     if (tt->is_pipe)
     {
-        open_pipe (dev, tt);
+        open_pipe (es, dev, tt);
     }
     else if (tt->type == DEV_TYPE_NULL)
     {
@@ -2194,14 +2195,14 @@ read_tun(struct tuntap *tt, uint8_t *buf, int len)
 #if !PEDANTIC
 
 void
-open_tun(const char *dev, const char *dev_type, const char *dev_node, struct tuntap *tt,
+open_tun(struct env_set *es, const char *dev, const char *dev_type, const char *dev_node, struct tuntap *tt,
          openvpn_net_ctx_t *ctx)
 {
     struct ifreq ifr;
 
     if (tt->is_pipe)
     {
-        open_pipe (dev, tt);
+        open_pipe (es, dev, tt);
     }
     else if (tt->type == DEV_TYPE_NULL)
     {
@@ -2347,7 +2348,7 @@ tuncfg(const char *dev, const char *dev_type, const char *dev_node,
     tt->type = dev_type_enum(dev, dev_type);
     tt->options = *options;
 
-    open_tun(dev, dev_type, dev_node, tt, ctx);
+    open_tun(NULL, dev, dev_type, dev_node, tt, ctx);
     if (ioctl(tt->fd, TUNSETPERSIST, persist_mode) < 0)
     {
         msg(M_ERR, "Cannot ioctl TUNSETPERSIST(%d) %s", persist_mode, dev);
@@ -7218,10 +7219,10 @@ print_windows_driver(enum windows_driver_type windows_driver)
 #else /* generic */
 
 void
-open_tun(const char *dev, const char *dev_type, const char *dev_node, struct tuntap *tt,
+open_tun(env_set *es, const char *dev, const char *dev_type, const char *dev_node, struct tuntap *tt,
          openvpn_net_ctx_t *ctx)
 {
-    open_tun_generic(dev, dev_type, dev_node, tt);
+    open_tun_generic(es, dev, dev_type, dev_node, tt);
 }
 
 void

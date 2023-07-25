@@ -1825,6 +1825,12 @@ do_open_tun(struct context *c, int *error_flags)
     bool ret = false;
     *error_flags = 0;
 
+    struct env_set *pes = c->c2.es;
+    // struct env_set *pes = env_set_create(NULL);
+    // env_set_inherit(pes, c->c2.es);
+    // setenv_dns_options(&c->options.dns_options, pes);
+
+
     if (!can_preserve_tun(c->c1.tuntap))
     {
 #ifdef TARGET_ANDROID
@@ -1894,7 +1900,7 @@ do_open_tun(struct context *c, int *error_flags)
         c->c1.tuntap->fd = oldtunfd;
 #endif
         /* open the tun device */
-        open_tun(c->options.dev, c->options.dev_type, c->options.dev_node,
+        open_tun(pes, c->options.dev, c->options.dev_type, c->options.dev_node,
                  c->c1.tuntap, &c->net_ctx);
 
         /* set the hardware address */
@@ -1996,7 +2002,7 @@ do_open_tun(struct context *c, int *error_flags)
         c->c1.tuntap->fd = oldtunfd;
 #endif
         /* open the tun device */
-        open_tun(c->options.dev, c->options.dev_type, c->options.dev_node,
+        open_tun(pes, c->options.dev, c->options.dev_type, c->options.dev_node,
                  c->c1.tuntap, &c->net_ctx);
 
         /* set the hardware address */
@@ -2109,7 +2115,7 @@ do_open_tun(struct context *c, int *error_flags)
         }
 
         /* open the tun device */
-        open_tun(c->options.dev, c->options.dev_type, c->options.dev_node,
+        open_tun(pes, c->options.dev, c->options.dev_type, c->options.dev_node,
                  c->c1.tuntap, &c->net_ctx);
 
         /* set the hardware address */
