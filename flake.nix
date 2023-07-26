@@ -22,9 +22,10 @@
         #     && path != toString ./flake.nix
         #     && path != toString ./flake.lock
         #   ) ./.;
-        buildInputs = (_old.buildInputs or []) ++ (with pkgs; [
+        buildInputs = (_old.buildInputs or []) ++ pkgs.lib.optionals pkgs.stdenv.isLinux (with pkgs; [
           libnl
           libcap_ng
+        ]) ++ (with pkgs; [
           lz4
           python3Packages.docutils
         ]);

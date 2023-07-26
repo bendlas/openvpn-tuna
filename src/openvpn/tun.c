@@ -1914,7 +1914,7 @@ tun_dco_enabled(struct tuntap *tt)
 
 #if !(defined(_WIN32) || defined(TARGET_LINUX))
 static void
-open_tun_generic(env_set *es, const char *dev, const char *dev_type, const char *dev_node,
+open_tun_generic(struct env_set *es, const char *dev, const char *dev_type, const char *dev_node,
                  struct tuntap *tt)
 {
     char tunname[256];
@@ -3418,7 +3418,7 @@ open_darwin_utun(const char *dev, const char *dev_type, const char *dev_node, st
 #endif /* ifdef HAVE_NET_IF_UTUN_H */
 
 void
-open_tun(const char *dev, const char *dev_type, const char *dev_node, struct tuntap *tt,
+open_tun(struct env_set *es, const char *dev, const char *dev_type, const char *dev_node, struct tuntap *tt,
          openvpn_net_ctx_t *ctx)
 {
 #ifdef HAVE_NET_IF_UTUN_H
@@ -3445,7 +3445,7 @@ open_tun(const char *dev, const char *dev_type, const char *dev_node, struct tun
             {
                 /* No explicit utun and utun failed, try the generic way) */
                 msg(M_INFO, "Failed to open utun device. Falling back to /dev/tun device");
-                open_tun_generic(dev, dev_type, NULL, tt);
+                open_tun_generic(es, dev, dev_type, NULL, tt);
             }
             else
             {
@@ -3468,7 +3468,7 @@ open_tun(const char *dev, const char *dev_type, const char *dev_node, struct tun
             dev_node = NULL;
         }
 
-        open_tun_generic(dev, dev_type, dev_node, tt);
+        open_tun_generic(es, dev, dev_type, dev_node, tt);
     }
 }
 
