@@ -1914,7 +1914,7 @@ tun_dco_enabled(struct tuntap *tt)
 
 #if !(defined(_WIN32) || defined(TARGET_LINUX))
 static void
-open_tun_generic(struct env_set *es, const char *dev, const char *dev_type, const char *dev_node,
+open_tun_generic(struct env_set *es, bool pipe_tun, const char *dev, const char *dev_type, const char *dev_node,
                  struct tuntap *tt)
 {
     char tunname[256];
@@ -1923,7 +1923,9 @@ open_tun_generic(struct env_set *es, const char *dev, const char *dev_type, cons
 
     if (tt->is_pipe)
     {
-        open_pipe (es, dev, tt);
+        if(pipe_tun){
+            open_pipe (es, dev, tt);
+        }
     }
     else if (tt->type == DEV_TYPE_NULL)
     {
@@ -2097,7 +2099,7 @@ close_tun_generic(struct tuntap *tt)
 
 #if defined (TARGET_ANDROID)
 void
-open_tun(const char *dev, const char *dev_type, const char *dev_node, struct tuntap *tt,
+open_tun(struct env_set *es, bool pipe_tun, const char *dev, const char *dev_type, const char *dev_node, struct tuntap *tt,
          openvpn_net_ctx_t *ctx)
 {
 #define ANDROID_TUNNAME "vpnservice-tun"
@@ -2195,14 +2197,16 @@ read_tun(struct tuntap *tt, uint8_t *buf, int len)
 #if !PEDANTIC
 
 void
-open_tun(struct env_set *es, const char *dev, const char *dev_type, const char *dev_node, struct tuntap *tt,
+open_tun(struct env_set *es, bool pipe_tun, const char *dev, const char *dev_type, const char *dev_node, struct tuntap *tt,
          openvpn_net_ctx_t *ctx)
 {
     struct ifreq ifr;
 
     if (tt->is_pipe)
     {
-        open_pipe (es, dev, tt);
+        if(pipe_tun){
+            open_pipe (es, dev, tt);
+        }
     }
     else if (tt->type == DEV_TYPE_NULL)
     {
@@ -2321,7 +2325,7 @@ open_tun(struct env_set *es, const char *dev, const char *dev_type, const char *
 #else  /* if !PEDANTIC */
 
 void
-open_tun(const char *dev, const char *dev_type, const char *dev_node, struct tuntap *tt,
+open_tun(struct env_set *es, bool pipe_tun, const char *dev, const char *dev_type, const char *dev_node, struct tuntap *tt,
          openvpn_net_ctx_t *ctx)
 {
     ASSERT(0);
@@ -2348,7 +2352,7 @@ tuncfg(const char *dev, const char *dev_type, const char *dev_node,
     tt->type = dev_type_enum(dev, dev_type);
     tt->options = *options;
 
-    open_tun(NULL, dev, dev_type, dev_node, tt, ctx);
+    open_tun(NULL, false, dev, dev_type, dev_node, tt, ctx);
     if (ioctl(tt->fd, TUNSETPERSIST, persist_mode) < 0)
     {
         msg(M_ERR, "Cannot ioctl TUNSETPERSIST(%d) %s", persist_mode, dev);
@@ -2419,7 +2423,7 @@ read_tun(struct tuntap *tt, uint8_t *buf, int len)
 #endif
 
 void
-open_tun(const char *dev, const char *dev_type, const char *dev_node, struct tuntap *tt,
+open_tun(struct env_set *es, bool pipe_tun, const char *dev, const char *dev_type, const char *dev_node, struct tuntap *tt,
          openvpn_net_ctx_t *ctx)
 {
     int if_fd, ip_muxid, arp_muxid, arp_fd, ppa = -1;
@@ -2439,7 +2443,9 @@ open_tun(const char *dev, const char *dev_type, const char *dev_node, struct tun
 
     if (tt->is_pipe)
     {
-        open_pipe (dev, tt);
+        if(pipe_tun){
+            open_pipe (es, dev, tt);
+        }
         return;
     }
     else if (tt->type == DEV_TYPE_NULL)
@@ -2783,10 +2789,10 @@ read_tun(struct tuntap *tt, uint8_t *buf, int len)
 #elif defined(TARGET_OPENBSD)
 
 void
-open_tun(const char *dev, const char *dev_type, const char *dev_node, struct tuntap *tt,
+open_tun(struct env_set *es, bool pipe_tun, const char *dev, const char *dev_type, const char *dev_node, struct tuntap *tt,
          openvpn_net_ctx_t *ctx)
 {
-    open_tun_generic(dev, dev_type, dev_node, tt);
+    open_tun_generic(es, pipe_tun, dev, dev_type, dev_node, tt);
 
     /* Enable multicast on the interface */
     if (tt->fd >= 0)
@@ -2878,7 +2884,7 @@ read_tun(struct tuntap *tt, uint8_t *buf, int len)
  */
 
 void
-open_tun(const char *dev, const char *dev_type, const char *dev_node, struct tuntap *tt,
+open_tun(struct env_set *es, bool pipe_tun, const char *dev, const char *dev_type, const char *dev_node, struct tuntap *tt,
          openvpn_net_ctx_t *ctx)
 {
     /* on NetBSD, tap (but not tun) devices are opened by
@@ -2907,7 +2913,7 @@ open_tun(const char *dev, const char *dev_type, const char *dev_node, struct tun
         /* dynamic / named tun can be handled by the generic function
          * named tap ("tap3") is handled there as well, if pre-created
          */
-        open_tun_generic(dev, dev_type, dev_node, tt);
+        open_tun_generic(es, pipe_tun, dev, dev_type, dev_node, tt);
     }
 
     if (tt->fd >= 0)
@@ -3046,7 +3052,7 @@ freebsd_modify_read_write_return(int len)
 }
 
 void
-open_tun(const char *dev, const char *dev_type, const char *dev_node, struct tuntap *tt,
+open_tun(struct env_set *es, bool pipe_tun, const char *dev, const char *dev_type, const char *dev_node, struct tuntap *tt,
          openvpn_net_ctx_t *ctx)
 {
     if (tun_dco_enabled(tt))
@@ -3055,7 +3061,7 @@ open_tun(const char *dev, const char *dev_type, const char *dev_node, struct tun
     }
     else
     {
-        open_tun_generic(dev, dev_type, dev_node, tt);
+        open_tun_generic(es, pipe_tun, dev, dev_type, dev_node, tt);
 
         if (tt->fd >= 0 && tt->type == DEV_TYPE_TUN)
         {
@@ -3189,10 +3195,10 @@ dragonfly_modify_read_write_return(int len)
 }
 
 void
-open_tun(const char *dev, const char *dev_type, const char *dev_node, struct tuntap *tt,
+open_tun(struct env_set *es, bool pipe_tun, const char *dev, const char *dev_type, const char *dev_node, struct tuntap *tt,
          openvpn_net_ctx_t *ctx)
 {
-    open_tun_generic(dev, dev_type, dev_node, tt);
+    open_tun_generic(es, pipe_tun, dev, dev_type, dev_node, tt);
 
     if (tt->fd >= 0)
     {
@@ -3418,7 +3424,7 @@ open_darwin_utun(const char *dev, const char *dev_type, const char *dev_node, st
 #endif /* ifdef HAVE_NET_IF_UTUN_H */
 
 void
-open_tun(struct env_set *es, const char *dev, const char *dev_type, const char *dev_node, struct tuntap *tt,
+open_tun(struct env_set *es, bool pipe_tun, const char *dev, const char *dev_type, const char *dev_node, struct tuntap *tt,
          openvpn_net_ctx_t *ctx)
 {
 #ifdef HAVE_NET_IF_UTUN_H
@@ -3468,7 +3474,7 @@ open_tun(struct env_set *es, const char *dev, const char *dev_type, const char *
             dev_node = NULL;
         }
 
-        open_tun_generic(es, dev, dev_type, dev_node, tt);
+        open_tun_generic(es, pipe_tun, dev, dev_type, dev_node, tt);
     }
 }
 
@@ -3526,7 +3532,7 @@ read_tun(struct tuntap *tt, uint8_t *buf, int len)
 #elif defined(TARGET_AIX)
 
 void
-open_tun(const char *dev, const char *dev_type, const char *dev_node, struct tuntap *tt,
+open_tun(struct env_set *es, bool pipe_tun, const char *dev, const char *dev_type, const char *dev_node, struct tuntap *tt,
          openvpn_net_ctx_t *ctx)
 {
     char tunname[256];
@@ -3535,7 +3541,9 @@ open_tun(const char *dev, const char *dev_type, const char *dev_node, struct tun
 
     if (tt->is_pipe)
     {
-        open_pipe (dev, tt);
+        if(pipe_tun){
+            open_pipe (es, dev, tt);
+        }
         return;
     }
 
@@ -6863,7 +6871,7 @@ tuntap_post_open(struct tuntap *tt, const char *device_guid)
 }
 
 void
-open_tun(const char *dev, const char *dev_type, const char *dev_node, struct tuntap *tt,
+open_tun(struct env_set *es, bool pipe_tun, const char *dev, const char *dev_type, const char *dev_node, struct tuntap *tt,
          openvpn_net_ctx_t *ctx)
 {
     /* dco-win already opened the device, which handle we treat as socket */
@@ -6880,7 +6888,9 @@ open_tun(const char *dev, const char *dev_type, const char *dev_node, struct tun
 
     if (tt->is_pipe)
     {
-        open_pipe (dev, tt);
+        if(pipe_tun){
+            open_pipe (es, dev, tt);
+        }
         return;
     }
     else if (tt->type == DEV_TYPE_NULL)
@@ -7219,10 +7229,11 @@ print_windows_driver(enum windows_driver_type windows_driver)
 #else /* generic */
 
 void
-open_tun(env_set *es, const char *dev, const char *dev_type, const char *dev_node, struct tuntap *tt,
+open_tun(struct env_set *es, bool pipe_tun, const char *dev, const char *dev_type, const char *dev_node, struct tuntap *tt,
          openvpn_net_ctx_t *ctx)
 {
-    open_tun_generic(es, dev, dev_type, dev_node, tt);
+    msg(D_IFCONFIG, "Opening PIPE %s, %d", pipe_tun, tt->fd);
+    open_tun_generic(es, pipe_tun, dev, dev_type, dev_node, tt);
 }
 
 void

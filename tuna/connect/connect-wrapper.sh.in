@@ -3,10 +3,6 @@
 set -eu
 
 echo >&2 =============== OpenVPN CONNECT FD: $VPNFD
-if [ "$VPNFD" != 7 ]
-then echo 2>&1 'Not starting proxy for VPNFD != 7'
-     exit 0
-fi
 
 if [ -f $TUNA_TMP/tuna-connect.pid ]
 then echo >&2 "PID file exists: $TUNA_TMP/tuna-connect.pid"

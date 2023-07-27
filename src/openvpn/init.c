@@ -1900,7 +1900,7 @@ do_open_tun(struct context *c, int *error_flags)
         c->c1.tuntap->fd = oldtunfd;
 #endif
         /* open the tun device */
-        open_tun(pes, c->options.dev, c->options.dev_type, c->options.dev_node,
+        open_tun(pes, false, c->options.dev, c->options.dev_type, c->options.dev_node,
                  c->c1.tuntap, &c->net_ctx);
 
         /* set the hardware address */
@@ -2002,7 +2002,7 @@ do_open_tun(struct context *c, int *error_flags)
         c->c1.tuntap->fd = oldtunfd;
 #endif
         /* open the tun device */
-        open_tun(pes, c->options.dev, c->options.dev_type, c->options.dev_node,
+        open_tun(pes, false, c->options.dev, c->options.dev_type, c->options.dev_node,
                  c->c1.tuntap, &c->net_ctx);
 
         /* set the hardware address */
@@ -2115,7 +2115,7 @@ do_open_tun(struct context *c, int *error_flags)
         }
 
         /* open the tun device */
-        open_tun(pes, c->options.dev, c->options.dev_type, c->options.dev_node,
+        open_tun(pes, true, c->options.dev, c->options.dev_type, c->options.dev_node,
                  c->c1.tuntap, &c->net_ctx);
 
         /* set the hardware address */
