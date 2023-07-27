@@ -3451,7 +3451,7 @@ open_tun(struct env_set *es, bool pipe_tun, const char *dev, const char *dev_typ
             {
                 /* No explicit utun and utun failed, try the generic way) */
                 msg(M_INFO, "Failed to open utun device. Falling back to /dev/tun device");
-                open_tun_generic(es, dev, dev_type, NULL, tt);
+                open_tun_generic(es, pipe_tun, dev, dev_type, NULL, tt);
             }
             else
             {
