@@ -12,10 +12,10 @@ Ported from
 
 ## Preparation
 
-To get the out-of-the-box experience, you'll need
-[Nix](https://nixos.org/) installed.
+To follow this readme, you'll need
+[Nix](https://nixos.org/) installed. There should be nothing, however, to preclude you from just building it as a regular OpenVPN fork.
 
-You don't, however, need to clone the repository. Instead you can just
+Also you don't need to clone the repository to try it out, if you have Nix installed. Instead you can just
 run it directly from github: e.g. `nix run github:bendlas/openvpn-tuna#server`
 
 Replace `.#` with `github:bendlas/openvpn-tuna#` in the examples, in
